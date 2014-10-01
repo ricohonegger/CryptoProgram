@@ -41,3 +41,17 @@ Icon
 Network Trash Folder
 Temporary Items
 .apdisk
+
+#C# Project Files etc.
+*.psess
+*.snk
+*.suo
+*.swp
+*.user
+*.vsp
+
+Backup/
+bin/
+dist/
+doc/
+obj/
