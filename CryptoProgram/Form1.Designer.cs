@@ -42,6 +42,7 @@
             this.tabControl1 = new System.Windows.Forms.TabControl();
             this.tabPage1 = new System.Windows.Forms.TabPage();
             this.tabPage2 = new System.Windows.Forms.TabPage();
+            this.label7 = new System.Windows.Forms.Label();
             this.button16 = new System.Windows.Forms.Button();
             this.listBox1 = new System.Windows.Forms.ListBox();
             this.button20 = new System.Windows.Forms.Button();
@@ -69,7 +70,7 @@
             this.button13 = new System.Windows.Forms.Button();
             this.label12 = new System.Windows.Forms.Label();
             this.label11 = new System.Windows.Forms.Label();
-            this.label7 = new System.Windows.Forms.Label();
+            this.label13 = new System.Windows.Forms.Label();
             this.tabControl1.SuspendLayout();
             this.tabPage1.SuspendLayout();
             this.tabPage2.SuspendLayout();
@@ -114,7 +115,7 @@
             this.button2.Name = "button2";
             this.button2.Size = new System.Drawing.Size(170, 23);
             this.button2.TabIndex = 4;
-            this.button2.Text = "Generate Keypair";
+            this.button2.Text = "Generate RSA Keypair";
             this.button2.UseVisualStyleBackColor = true;
             this.button2.Click += new System.EventHandler(this.button2_Click);
             // 
@@ -136,7 +137,7 @@
             // 
             // textBox4
             // 
-            this.textBox4.Location = new System.Drawing.Point(20, 286);
+            this.textBox4.Location = new System.Drawing.Point(20, 305);
             this.textBox4.Name = "textBox4";
             this.textBox4.Size = new System.Drawing.Size(325, 20);
             this.textBox4.TabIndex = 7;
@@ -144,14 +145,14 @@
             // 
             // textBox5
             // 
-            this.textBox5.Location = new System.Drawing.Point(20, 360);
+            this.textBox5.Location = new System.Drawing.Point(20, 367);
             this.textBox5.Name = "textBox5";
             this.textBox5.Size = new System.Drawing.Size(325, 20);
             this.textBox5.TabIndex = 8;
             // 
             // button3
             // 
-            this.button3.Location = new System.Drawing.Point(20, 324);
+            this.button3.Location = new System.Drawing.Point(20, 331);
             this.button3.Name = "button3";
             this.button3.Size = new System.Drawing.Size(94, 23);
             this.button3.TabIndex = 9;
@@ -161,7 +162,7 @@
             // 
             // textBox6
             // 
-            this.textBox6.Location = new System.Drawing.Point(20, 386);
+            this.textBox6.Location = new System.Drawing.Point(20, 393);
             this.textBox6.Name = "textBox6";
             this.textBox6.Size = new System.Drawing.Size(325, 20);
             this.textBox6.TabIndex = 10;
@@ -179,6 +180,7 @@
             // 
             // tabPage1
             // 
+            this.tabPage1.Controls.Add(this.label13);
             this.tabPage1.Controls.Add(this.richTextBox1);
             this.tabPage1.Controls.Add(this.textBox6);
             this.tabPage1.Controls.Add(this.button1);
@@ -229,6 +231,15 @@
             this.tabPage2.TabIndex = 1;
             this.tabPage2.Text = "tabPage2";
             this.tabPage2.UseVisualStyleBackColor = true;
+            // 
+            // label7
+            // 
+            this.label7.AutoSize = true;
+            this.label7.Location = new System.Drawing.Point(24, 256);
+            this.label7.Name = "label7";
+            this.label7.Size = new System.Drawing.Size(99, 13);
+            this.label7.TabIndex = 32;
+            this.label7.Text = "Active Connections";
             // 
             // button16
             // 
@@ -477,14 +488,14 @@
             this.label11.TabIndex = 0;
             this.label11.Text = "Custom Protocol Builder";
             // 
-            // label7
+            // label13
             // 
-            this.label7.AutoSize = true;
-            this.label7.Location = new System.Drawing.Point(24, 256);
-            this.label7.Name = "label7";
-            this.label7.Size = new System.Drawing.Size(99, 13);
-            this.label7.TabIndex = 32;
-            this.label7.Text = "Active Connections";
+            this.label13.AutoSize = true;
+            this.label13.Location = new System.Drawing.Point(123, 337);
+            this.label13.Name = "label13";
+            this.label13.Size = new System.Drawing.Size(138, 13);
+            this.label13.TabIndex = 11;
+            this.label13.Text = "Requires generated Keypair";
             // 
             // Form1
             // 
@@ -549,6 +560,7 @@
         private System.Windows.Forms.ListBox listBox1;
         private System.Windows.Forms.Button button16;
         private System.Windows.Forms.Label label7;
+        private System.Windows.Forms.Label label13;
     }
 }
 

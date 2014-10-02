@@ -22,6 +22,9 @@ namespace CryptoProgram
         //Contains the currently active connections (Sockets).
         public List<ActiveConnection> activeConnections { get; set; }
 
+        public readonly bool SELECT_PRIVATE_KEY = true;
+        public readonly bool SELECT_PUBLIC_KEY = false;
+
 
         public GlobalContainer()
         {

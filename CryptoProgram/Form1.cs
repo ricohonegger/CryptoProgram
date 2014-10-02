@@ -62,17 +62,17 @@ namespace CryptoProgram
             BCEngine.generateKeys(false, true, ref keys, 1024);
             
             AsymmetricKeyParameter priv = keys.Private;
-            AsymmetricKeyParameter priv2 = keys.Public;
+            AsymmetricKeyParameter publ = keys.Public;
 
             //or            
 
             //Load the keys from file
-            //AsymmetricKeyParameter priv = BCEngine.getKeyFromFile(true);
-            //AsymmetricKeyParameter priv2 = BCEngine.getKeyFromFile(false);
+            //AsymmetricKeyParameter priv = BCEngine.getKeyFromFile(this._GC.SELECT_PRIVATE_KEY);
+            //AsymmetricKeyParameter publ = BCEngine.getKeyFromFile(this._GC.SELECT_PUBLIC_KEY);
 
             //Add the keys to the richtextboxes
-            this.richTextBox1.Text = BCEngine.getKeyFromKey(priv, true);
-            this.richTextBox2.Text = BCEngine.getKeyFromKey(priv2, false);
+            this.richTextBox1.Text = BCEngine.getKeyFromKeyAsPEM(priv);
+            this.richTextBox2.Text = BCEngine.getKeyFromKeyAsPEM(publ);
 
             /*
             //Use the private key and hash it.
@@ -88,15 +88,19 @@ namespace CryptoProgram
         //Encrypt/Decrypt RSA
         private void button3_Click(object sender, EventArgs e)
         {
-            //Loads keys from file            
-            AsymmetricKeyParameter pub = BCEngine.getKeyFromFile(false);
-            AsymmetricKeyParameter pri = BCEngine.getKeyFromFile(true);
+            //Loads keys from file               
+            //AsymmetricKeyParameter pub = BCEngine.getKeyFromFile(false);
+            //AsymmetricKeyParameter pri = BCEngine.getKeyFromFile(true);
+
+            //Load keys from textboxes
+            AsymmetricKeyParameter pub = BCEngine.convertKeyAsStringToKey(this.richTextBox2.Text, this._GC.SELECT_PUBLIC_KEY);//public key//2
+            AsymmetricKeyParameter pri = BCEngine.convertKeyAsStringToKey(this.richTextBox1.Text, this._GC.SELECT_PRIVATE_KEY);//private key
 
             //Encrypt
-            this.textBox5.Text = BCEngine.RSAEncryption(this.textBox4.Text, pub, true);  
+            this.textBox5.Text = BCEngine.RSAEncryption(this.textBox4.Text, pub);  
          
             //Decrypt the encrypted part.
-            this.textBox6.Text = BCEngine.RSADecryption(this.textBox5.Text, pri, true);
+            this.textBox6.Text = BCEngine.RSADecryption(this.textBox5.Text, pri);
         }
         
         /*

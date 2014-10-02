@@ -32,7 +32,7 @@ namespace CryptoProgram
          *
          * 
          * 2) The RSA encryption/decryption might need to be modified to allow for encoding
-         *    options to be specified.
+         *    options to be specified. It is currently hardcoded to use Unicode.
          */
         
         
@@ -122,7 +122,7 @@ namespace CryptoProgram
          * Use public or private key to encrypt a piece of unicode encoded text
          * return Base64 encoded string version of the encrypted string
          */
-        public static string RSAEncryption(string plaintextAsUnicode, AsymmetricKeyParameter key, bool fips)
+        public static string RSAEncryption(string plaintextAsUnicode, AsymmetricKeyParameter key)
         {
             RsaEngine engine = new RsaEngine();
             engine.Init(true, key);
@@ -139,7 +139,7 @@ namespace CryptoProgram
          * Use public or private key to decrypt a piece of base64 encoded encrypted string
          * return Unicode encoded decrypted string
          */
-        public static string RSADecryption(string plaintextAsBase64, AsymmetricKeyParameter key, bool fips)
+        public static string RSADecryption(string plaintextAsBase64, AsymmetricKeyParameter key)
         {
             RsaEngine engine = new RsaEngine();
             engine.Init(false, key);
@@ -273,7 +273,6 @@ namespace CryptoProgram
             {
                 PrivateKeyInfo pkInfo = PrivateKeyInfoFactory.CreatePrivateKeyInfo(keys.Private);
                 theKey = Convert.ToBase64String(pkInfo.GetDerEncoded());
-
             }
             else
             {
@@ -285,7 +284,11 @@ namespace CryptoProgram
         }
 
         /*
-         *  If we have a single key and want to output as string.
+         *  Output single key as string.
+         *  Note: this string cannot be used to convert back to key/pem, because there is no functionality for that.
+         *  And it seems that such functionality is not trivial:
+         *  http://stackoverflow.com/questions/23852221/converting-privatekey-to-pem-string-without-using-bouncycastle
+         *  BouncyCastle stores them in PKCS#1 format (may require ASN.1 parser).
          */
         public static String getKeyFromKey(AsymmetricKeyParameter key, bool getPrivate)
         {
@@ -294,7 +297,6 @@ namespace CryptoProgram
             {
                 PrivateKeyInfo pkInfo = PrivateKeyInfoFactory.CreatePrivateKeyInfo(key);
                 theKey = Convert.ToBase64String(pkInfo.GetDerEncoded());
-
             }
             else
             {
@@ -303,6 +305,62 @@ namespace CryptoProgram
             }
 
             return theKey;
+        }
+
+        /*
+         * Output a key from keypair as PEM string.
+         */
+        public static String getKeyFromKeyPairAsPEM(AsymmetricCipherKeyPair keyPair, bool getPrivateKey)
+        {
+            if (getPrivateKey)
+            {
+                return getKeyFromKeyAsPEM(keyPair.Private);
+            }
+            else
+            {
+                return getKeyFromKeyAsPEM(keyPair.Public);
+            }
+        }
+
+        /*
+         *  Output key as PEM string.
+         */
+        public static String getKeyFromKeyAsPEM(AsymmetricKeyParameter key)
+        {
+            StringBuilder pem = new StringBuilder();
+
+            TextWriter textWriter = new StringWriter(pem);
+            PemWriter pemWriter = new PemWriter(textWriter);
+            pemWriter.WriteObject(key);
+            pemWriter.Writer.Flush();
+            textWriter.Close();
+
+            return pem.ToString();
+        }
+
+        /*
+         * Convert key as PEM string to AsymmetricKeyParameter
+         */
+        public static AsymmetricKeyParameter convertKeyAsStringToKey(String keyAsString, bool keyIsPrivate)
+        {
+            AsymmetricCipherKeyPair keyPair = null;
+            AsymmetricKeyParameter key = null;
+                        
+            using (TextReader sr = new StringReader(keyAsString))
+            {
+                //Convert the PEM string to usable form.
+                if (keyIsPrivate)
+                {
+                    keyPair = (AsymmetricCipherKeyPair)new PemReader(sr).ReadObject();
+                    key = keyPair.Private;
+                }
+                else
+                {                    
+                    key = (Org.BouncyCastle.Crypto.Parameters.RsaKeyParameters)new PemReader(sr).ReadObject();                    
+                }
+            }
+            
+            return key;
         }
 
     }
