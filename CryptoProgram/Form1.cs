@@ -129,23 +129,32 @@ namespace CryptoProgram
             //try to parse
             if (Int32.TryParse(this.textBox9.Text, out portNumber))
             {
-
+                IPAddress ipOut;
+                if (!IPAddress.TryParse(this.textBox7.Text, out ipOut))
+                {
+                    //Notify user of invalid IP Address
+                    addMessageToRTBMainChat("Error: Invalid IP Address selected.\n");
+                    return;                    
+                }
+                
                 SimpleSocket abc = new SimpleSocket();
 
                 int idForActiveConnection = this._GC.activeConnections.Count;
-                this._GC.activeConnections.Add(new ActiveConnection(abc.establishConnection("127.0.0.1", portNumber, "message to be sent encoded using protocol..")));
-                this._GC.activeConnections[idForActiveConnection].id = idForActiveConnection;
+                ActiveConnection connection = new ActiveConnection(abc.establishConnection(ipOut.ToString(), portNumber, "Hi, I want to establish a connection. "));               
 
-                //Can only call this if establish was successful
-                if (this._GC.activeConnections[0].socket != null)
+                //Can only call this if establish was successful                
+                if (connection.socket != null)
                 {
                     abc.ReceiveDataOnConnectedSocketCallback(this._GC.activeConnections[idForActiveConnection].socket);
+
+                    this._GC.activeConnections.Add(connection);
+                    this._GC.activeConnections[idForActiveConnection].id = idForActiveConnection;
 
                     this.listBox1.Items.Add("Socket " + this._GC.activeConnections[idForActiveConnection].socket.RemoteEndPoint.ToString());
                 }
                 else
                 {
-                    addMessageToRTBMainChat("Error: No connection could be established to: 127.0.0.1:" + portNumber + "\n");
+                    addMessageToRTBMainChat("Error: No connection could be established to: " + ipOut.ToString() + ":" + portNumber + "\n");
                 }               
             }
             else

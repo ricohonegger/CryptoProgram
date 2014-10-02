@@ -323,15 +323,13 @@ namespace CryptoProgram
             }
             else
             {
-
-                //Hard coded string will be replaced using some form of a messaging protocol.
-                message = "My message.. ";
+                //message = "My message.. ";
 
                 for (int i = 0; i < 5; i++)
                 {
                     //message += message;
                 }
-                message += "<EOF>";
+                //message += "<EOF>";
 
                 String msgSize = "" + (message.Length * sizeof(Char)).ToString("00000000");
                 
@@ -368,7 +366,7 @@ namespace CryptoProgram
             }
             catch (SocketException e)
             {
-                Console.WriteLine("Socket err happend: " + e.ToString());
+                Console.WriteLine("Socket err happend: " + e.ToString() + " **\nSocket Error code: " + e.SocketErrorCode);
                 //this.outboundConnections.Remove(connection);//old
 
                 //Fire event to display failed connection
@@ -376,7 +374,7 @@ namespace CryptoProgram
             }
 
             
-            message = "Hi, I want to establish a connection. ";
+            //message = "Hi, I want to establish a connection. ";
 
             for (int i = 0; i < 10; i++)
             {
