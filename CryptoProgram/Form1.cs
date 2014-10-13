@@ -25,6 +25,9 @@ namespace CryptoProgram
 {
     public partial class Form1 : Form
     {
+        //Container to be used to hold all properties.
+        public GlobalContainer _GC = null;
+        
         public Form1()
         {
             InitializeComponent();
@@ -32,28 +35,39 @@ namespace CryptoProgram
             this._GC = new GlobalContainer
             {
                 //Initialise members here..
-                activeConnections = new List<ActiveConnection>()
+                activeConnections = new List<ActiveConnection>(),
+                ports = new List<String>()
             };
 
             // Attach events
-            SimpleSocket.updateUIUsingEvent += receivedMsg;
+            SimpleSocket.receivedMessageEvent += receivedMsg;
             SimpleSocket.connectionEstablishedEvent += connectionEstablished;
             SimpleSocket.connectionInterruptedEvent += connectionEstablished;
             SimpleSocket.handlerForConnectionEstablishedEvent += handlerReceived;
             SimpleSocket.invalidHeaderReceivedEvent += connectionEstablished;
+            
         }
 
-        public GlobalContainer _GC = null;
 
-        //AES Encrypt/Decrypt
+        /*****************************************/
+        //                                       //
+        // First tab functionality               //
+        //                                       //
+        /*****************************************/
+
+        /*
+         * AES Encrypt/Decrypt functions
+         */ 
         private void button1_Click(object sender, EventArgs e)
         {
 
-            this.textBox2.Text = BCEngine.AESEncryption(this.textBox1.Text, "0123456789ABCDEF0123456789ABCDEF", true);
-            this.textBox3.Text = BCEngine.AESDecryption(this.textBox2.Text, "0123456789ABCDEF0123456789ABCDEF", true);
+            this.textBox2.Text = BCEngine.AESEncryption(this.textBox1.Text, "0123456789ABCDEF0123456789ABCDEF");
+            this.textBox3.Text = BCEngine.AESDecryption(this.textBox2.Text, "0123456789ABCDEF0123456789ABCDEF");
         }
 
-        //Generate RSA Key Pair
+        /*
+         * Generate RSA Key pair
+         */ 
         private void button2_Click(object sender, EventArgs e)
         {
             AsymmetricCipherKeyPair keys = null;
@@ -85,7 +99,9 @@ namespace CryptoProgram
             */
         }
 
-        //Encrypt/Decrypt RSA
+        /*
+         * Encrypt/Decrypt using RSA, requires keys to have been generated in textboxes
+         */ 
         private void button3_Click(object sender, EventArgs e)
         {
             //Loads keys from file               
@@ -102,25 +118,33 @@ namespace CryptoProgram
             //Decrypt the encrypted part.
             this.textBox6.Text = BCEngine.RSADecryption(this.textBox5.Text, pri);
         }
+
+        /*****************************************/
+        //                                       //
+        // Second tab functionality              //
+        //                                       //
+        /*****************************************/
         
         /*
-         * Listen for incoming connection.
+         * Listen for incoming connection on specified port.
          */
         private void button4_Click(object sender, EventArgs e)
         {
-
             int portNumber = 0;
 
             //try to parse
             if (Int32.TryParse(this.textBox8.Text, out portNumber))
             {
                 SimpleSocket abc = new SimpleSocket();
+                      
+                //TODO remove hardcoded localhost ip
                 Socket theSocketWhichAcceptsNewConnections = abc.listenSocket(new IPEndPoint(IPAddress.Parse("127.0.0.1"), portNumber));
             }
             else
             {
-                //Invalid input or port number..
-            }            
+                addMessageToRTBMainChat("Error: Invalid port number selected.\n");
+            }
+            
         }
 
         /*
@@ -142,24 +166,49 @@ namespace CryptoProgram
                 }
                 
                 SimpleSocket abc = new SimpleSocket();
-
-                int idForActiveConnection = this._GC.activeConnections.Count;
-                ActiveConnection connection = new ActiveConnection(abc.establishConnection(ipOut.ToString(), portNumber, "Hi, I want to establish a connection. "));               
-
-                //Can only call this if establish was successful                
-                if (connection.socket != null)
+                
+                //This lock has to be out here for localhost.
+                //Establish connection doesnt return until it is successfully connected, so we could run into a race condition
+                //when adding things to _GC.
+                lock (GC_lock)
                 {
-                    abc.ReceiveDataOnConnectedSocketCallback(this._GC.activeConnections[idForActiveConnection].socket);
+                    //Attempt to establish connection
+                    ActiveConnection connection = new ActiveConnection(abc.establishConnection(ipOut.ToString(), portNumber, "THIS IS AN ESTABLISH CONNECTION ATTEMPT"));
 
-                    this._GC.activeConnections.Add(connection);
-                    this._GC.activeConnections[idForActiveConnection].id = idForActiveConnection;
+                    //Can only continue if establish was successful                
+                    if (connection.socket != null)
+                    {
+                        int idForActiveConnection = this._GC.activeConnections.Count;
+                        
+                        this._GC.activeConnections.Add(connection);
+                        
 
-                    this.listBox1.Items.Add("Socket " + this._GC.activeConnections[idForActiveConnection].socket.RemoteEndPoint.ToString());
+                        //Add port to list for reference.
+                        this._GC.ports.Add("" + (connection.socket.LocalEndPoint as IPEndPoint).Port);
+                        this._GC.activeConnections[idForActiveConnection].id = idForActiveConnection;
+
+                        //Allow data to be received..
+                        abc.ReceiveDataOnConnectedSocketCallback(this._GC.activeConnections[idForActiveConnection].socket);
+
+                        this._GC.activeConnections[idForActiveConnection].initialiseProtocol(true, new List<Object>());
+                        
+                        //add event so ActiveConn -> Form1.cs
+                        this._GC.activeConnections[idForActiveConnection].sendNextMessageOfProtocol += sendNextMessageOfProtocol_Event;
+                       
+                        this.listBox1.Items.Add("Socket " + this._GC.activeConnections[idForActiveConnection].socket.RemoteEndPoint.ToString());
+
+                        //Tell the protocol to begin..
+                        beginProto("" + (this._GC.activeConnections[idForActiveConnection].socket.LocalEndPoint as IPEndPoint).Port);
+                    }
+                    else
+                    {
+                        addMessageToRTBMainChat("Error: No connection could be established to: " + ipOut.ToString() + ":" + portNumber + "\n");
+                    }
                 }
-                else
-                {
-                    addMessageToRTBMainChat("Error: No connection could be established to: " + ipOut.ToString() + ":" + portNumber + "\n");
-                }               
+
+                
+
+
             }
             else
             {
@@ -184,72 +233,7 @@ namespace CryptoProgram
             }
 
             rtb.Text += text;
-        }
-
-        
-
-        public void guiListen()
-        {    
-            //Generate my keys
-            AsymmetricCipherKeyPair tempKeys = _GC.myKeys;
-            BCEngine.generateKeys(false, true, ref tempKeys, 1024);
-            _GC.myKeys = tempKeys;
-
-            _GC.sP2 = new SecProtocol
-            {
-                srcIp = "127.0.0.1",
-                srcPort = 1337,
-                destIp = "127.0.0.1",
-                destPort = 2051
-            };
-        }
-
-        /*
-         * Offer Keypair exchange
-         */ 
-        private void button11_Click(object sender, EventArgs e)
-        {
-            //Function:
-            //Generate my public and private keys, and send my public key.
-            //Wait for response; their public key
-
-            AsymmetricCipherKeyPair tempKeys = _GC.myKeys;
-            BCEngine.generateKeys(false, true, ref tempKeys, 1024);
-            _GC.myKeys = tempKeys;
-
-            _GC.sP = new SecProtocol
-            {
-                srcIp = "127.0.0.1",
-                srcPort = 1337,
-                destIp = "127.0.0.1",
-                destPort = 2051
-            };
-         
-            this.label10.Text = "Sending Key";            
-            //send
-            this.label10.Text = "Sent Key";
-        }
-
-        /*
-         * Accept Keypair Exchange
-         */
-        private void button12_Click(object sender, EventArgs e)
-        {
-            AsymmetricCipherKeyPair tempKeys = _GC.myKeys;
-            BCEngine.generateKeys(false, true, ref tempKeys, 1024);
-            _GC.myKeys = tempKeys;
-
-            _GC.sP2 = new SecProtocol
-            {
-                srcIp = "127.0.0.1",
-                srcPort = 1337,
-                destIp = "127.0.0.1",
-                destPort = 2051
-            };
-            SecProtocol test1 = new SecProtocol("127.0.0.1", 1337, "127.0.0.1", 2051);
-            
-            //...
-        }      
+        }     
 
         /*
          * Used to handle event from SimpleSocket
@@ -261,9 +245,39 @@ namespace CryptoProgram
             {  
                 this.Invoke((MethodInvoker)delegate
                 {                    
-                    addMessageToRTBMainChat(string.Format("Time: {1}\tSource: {2}\tLocal: {3}\tMessage: {0}\n", message, DateTime.Now, source.ToString(), local.ToString()));
+                    addMessageToRTBMainChat(string.Format("--Time: {1}\tSource: {2}\tLocal: {3}\tMessage: {0}\n", message, DateTime.Now, source.ToString(), local.ToString()));
+
+                    //get decoded result(s)
+                    List<string> decoded = this._GC.activeConnections[this._GC.ports.IndexOf("" + (local as IPEndPoint).Port)].decodeMessage(message);
+
+                    if (decoded.Count == 1)
+                    {
+                        addMessageToRTBMainChat(string.Format("--Time: {1}\tSource: {2}\tLocal: {3}\tMessage: {0}\n", decoded[0], DateTime.Now, source.ToString(), local.ToString()));
+                    }
+                    
+                    /*
+                    if (!this._GC.activeConnections[this._GC.ports.IndexOf("" + (local as IPEndPoint).Port)].protocol.protocolComplete)
+                    {
+                        //if we need to send a reply we do..
+                        SimpleSocket abc = new SimpleSocket();
+
+                        String toSend = this._GC.activeConnections[this._GC.ports.IndexOf("" + (local as IPEndPoint).Port)].sendMessage(String.Empty);
+                        Console.WriteLine("Sending next msg of protocol: " + toSend);
+                        abc.sendMessage(this._GC.activeConnections[this._GC.ports.IndexOf("" + (local as IPEndPoint).Port)], toSend);
+                        
+                    }
+                     */
+                     
                 });
             }
+        }
+
+        public void sendNextMessageOfProtocol_Event(String portNumber)
+        {
+            SimpleSocket abc = new SimpleSocket();
+            String toSend = this._GC.activeConnections[this._GC.ports.IndexOf(portNumber)].encodeMessage(String.Empty);
+            //Console.WriteLine("Sending next msg of protocol: " + toSend);
+            abc.sendMessage(this._GC.activeConnections[this._GC.ports.IndexOf(portNumber)], toSend);
         }
 
         /*
@@ -277,7 +291,25 @@ namespace CryptoProgram
                 this.Invoke((MethodInvoker)delegate
                 {                    
                     addMessageToRTBMainChat(string.Format("Connection Established: {1}\tSource: {2}\tLocal: {3}\tMessage: {0}\n", message, DateTime.Now, source.ToString(), local.ToString()));
+                    Console.WriteLine("Beginning proto I am: " + (local as IPEndPoint).Port);
+                    beginProto("" + (local as IPEndPoint).Port);                                     
                 });
+            }
+        }      
+
+        public void beginProto(string port)
+        {
+            //Prepare protocol for commencement
+            String toSend = this._GC.activeConnections[this._GC.ports.IndexOf(port)].prepareProtocol();
+            
+            if (toSend != String.Empty)
+            {
+                SimpleSocket abc = new SimpleSocket();
+
+                Console.WriteLine("Sending now: " + toSend);    
+                //this._GC.activeConnections.Count > 0
+                abc.sendMessage(this._GC.activeConnections[this._GC.ports.IndexOf(port)], toSend);               
+                
             }
         }
 
@@ -293,7 +325,18 @@ namespace CryptoProgram
             lock(GC_lock)
             {
 
-                this._GC.activeConnections.Add(new ActiveConnection(handler));
+                ActiveConnection connection = new ActiveConnection(handler);
+                this._GC.activeConnections.Add(connection);
+
+                //Add port to list for reference.                
+                this._GC.ports.Add("" + (handler.LocalEndPoint as IPEndPoint).Port);
+
+                //initialiseProtocol
+                this._GC.activeConnections[this._GC.activeConnections.Count - 1].initialiseProtocol(false, new List<Object>());
+                
+                //add event so ActiveConn -> Form1.cs
+                this._GC.activeConnections[this._GC.activeConnections.Count - 1].sendNextMessageOfProtocol += sendNextMessageOfProtocol_Event;
+                
                 this.Invoke((MethodInvoker)delegate
                 {
                     this.listBox1.Items.Add("Socket " + handler.RemoteEndPoint.ToString());
@@ -306,12 +349,18 @@ namespace CryptoProgram
          */ 
         private void addMessageToRTBMainChat(String message)
         {
-            this.richTextBox3.Text += message;
-        }
+            this.richTextBox3.Text += message + "\n*****\n";
+        }        
+       
 
-        
+        /*****************************************/
+        //                                       //
+        // Local Events (Button clicks etc.)     //
+        //                                       //
+        /*****************************************/
+
         private static object lockerForSend = new object();
-        
+
         //Send message (connection already established)
         private void button20_Click(object sender, EventArgs e)
         {
@@ -323,12 +372,29 @@ namespace CryptoProgram
 
                     SimpleSocket abc = new SimpleSocket();
 
-                    //this._GC.activeConnections.Count > 0
-                    abc.sendMessage(this._GC.activeConnections[this.listBox1.SelectedIndex], this.textBox10.Text);
+                    //Encode the data
+                    string messageToSend = this._GC.activeConnections[this.listBox1.SelectedIndex].encodeMessage(this.textBox10.Text);
+                    
+                    //We are sending a message over the currently selected activeConnection
+                    abc.sendMessage(this._GC.activeConnections[this.listBox1.SelectedIndex], messageToSend);
                 }
             }
         }
-        
+
+
+
+
+
+
+
+
+
+        /*****************************************/
+        //                                       //
+        // Temporary Testing Functionality       //
+        //                                       //
+        /*****************************************/
+
         /*
          * Used to send multiple messages as fast as possible.
          */ 
@@ -340,7 +406,15 @@ namespace CryptoProgram
             }
         }
 
-        
+        private void button6_Click(object sender, EventArgs e)
+        {
+            SecProtocolTreeTEST test = new SecProtocolTreeTEST();
+            //test.populateTree2();
+            //test.decodeMessage();
+
+            ProtocolParser a = new ProtocolParser();
+            a.main();
+        }   
 
         
 

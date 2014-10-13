@@ -77,7 +77,10 @@
     <Compile Include="GlobalContainer.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="ProtocolParser.cs" />
     <Compile Include="SecProtocol.cs" />
+    <Compile Include="SecProtocolBlock.cs" />
+    <Compile Include="SecProtocolTree.cs" />
     <Compile Include="SimpleSocket.cs" />
     <EmbeddedResource Include="Form1.resx">
       <DependentUpon>Form1.cs</DependentUpon>

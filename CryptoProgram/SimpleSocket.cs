@@ -41,12 +41,7 @@ namespace CryptoProgram
                 socket.Bind(endPoint);
                 socket.Listen(10);
 
-                //no need for thread
-                /*
-                Thread t = new Thread(() => funcName());
-                t.Start();
-                */
-
+                //Start accepting incoming connections
                 socket.BeginAccept(new AsyncCallback(AcceptCallback), socket);
 
                 return socket;
@@ -58,6 +53,9 @@ namespace CryptoProgram
             }
         }      
 
+        /*
+         * Accepts incoming connection
+         */ 
         private void AcceptCallback(IAsyncResult ar)
         {
             
@@ -73,7 +71,7 @@ namespace CryptoProgram
             handlerForConnectionEstablished(handler);  
                 
             handler.BeginReceive(state.buffer, 0, StateObject.BufferSize, 0, new AsyncCallback(ReceiveCallbackWithLength), state);
-            connectionEstablished("Connection is established.", state.workSocket.RemoteEndPoint, state.workSocket.LocalEndPoint);
+            //connectionEstablished("Connection was accepted.", state.workSocket.RemoteEndPoint, state.workSocket.LocalEndPoint);
                 
             //Needs listener.BeginAccept(new AsyncCallback(AcceptCallback), listener) again to allow for multiple connections at once
             listener.BeginAccept(new AsyncCallback(AcceptCallback), listener);
@@ -279,9 +277,8 @@ namespace CryptoProgram
                 //then add it all and fire event
                 state.sb.Append(Encoding.ASCII.GetString(state.buffer, index, bytesRead - index));
 
-                //Console.WriteLine("Whole message received " + state.sb.Length + " bytes/" + state.messageLength + " bytes");
                 updateUIOnReceivedMessage(state.sb.ToString(), state.workSocket.RemoteEndPoint, state.workSocket.LocalEndPoint);
-
+                
                 //Clear the string builder and reset message length received.
                 state.sb.Clear();
                 state.messageLengthReceived = false;
@@ -293,13 +290,12 @@ namespace CryptoProgram
             else if (state.sb.Length + remainingInBuffer > state.messageLength)
             {
                 int amountEaten = (state.messageLength - state.sb.Length);
+                
                 //then add up until end of message. Fire event                
                 state.sb.Append(Encoding.ASCII.GetString(state.buffer, index, (state.messageLength - state.sb.Length)));
-                //Console.WriteLine("Next: " + Encoding.ASCII.GetString(state.buffer, index + state.messageLength - state.sb.Length, state.buffer.Length - index));
-               
-                //Console.WriteLine("Whole message received " + state.sb.Length + " bytes/" + state.messageLength + " bytes");
+                
                 updateUIOnReceivedMessage(state.sb.ToString(), state.workSocket.RemoteEndPoint, state.workSocket.LocalEndPoint);
-
+                
                 //Clear the string builder and reset message length received.
                 state.sb.Clear();
                 state.messageLengthReceived = false;
@@ -333,10 +329,29 @@ namespace CryptoProgram
 
                 String msgSize = "" + (message.Length * sizeof(Char)).ToString("00000000");
                 
-                //Console.WriteLine("Sending message of length: " + message.Length + ", Char size: " + sizeof(Char));
+                //Console.WriteLine("SimpleSocket send: " + message.Length + ", Char size: " + sizeof(Char));
+                Console.WriteLine("SimpleSocket send: " + msgSize + message);
 
                 byte[] outData = System.Text.Encoding.ASCII.GetBytes(msgSize + message);
                 connection.socket.Send(outData, 0, outData.Length, SocketFlags.None);
+            }
+        }
+
+        /*
+         * Send the message using a connected socket.
+         */
+        public void sendMessage(Socket socket, String message)
+        {
+            if (!socket.Connected)
+            {
+                //Fire event to say socket was not connected..
+            }
+            else
+            {
+                String msgSize = "" + (message.Length * sizeof(Char)).ToString("00000000");
+
+                byte[] outData = System.Text.Encoding.ASCII.GetBytes(msgSize + message);
+                socket.Send(outData, 0, outData.Length, SocketFlags.None);
             }
         }
         
@@ -354,10 +369,7 @@ namespace CryptoProgram
          */
         private Socket establishConnection(IPEndPoint destination, String message)
         {
-
             Socket connection = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-            //Add it to list of connections
-            //this.outboundConnections.Add(connection);//old
 
             try
             {
@@ -367,28 +379,12 @@ namespace CryptoProgram
             catch (SocketException e)
             {
                 Console.WriteLine("Socket err happend: " + e.ToString() + " **\nSocket Error code: " + e.SocketErrorCode);
-                //this.outboundConnections.Remove(connection);//old
 
                 //Fire event to display failed connection
                 return null;
             }
 
-            
-            //message = "Hi, I want to establish a connection. ";
-
-            for (int i = 0; i < 10; i++)
-            {
-                //message += message;
-            }
-            //message += "<EOF>";
-
-            String msgSize = "" + (message.Length * sizeof(Char)).ToString("00000000");
-            Console.WriteLine("MessageLength: " + message.Length + ", Char length: " + sizeof(Char));
-
-            byte[] outData = System.Text.Encoding.ASCII.GetBytes(msgSize + message);
-            connection.Send(outData, 0, outData.Length, SocketFlags.None);
             Console.WriteLine("Connection should be established");
-
             return connection;
         }       
 
@@ -416,14 +412,14 @@ namespace CryptoProgram
         //Need delegate and stuff to inform GUI of any completed operation..
         public delegate void SendMessage(string message, EndPoint source, EndPoint local);
 
-        public static event SendMessage updateUIUsingEvent;
+        public static event SendMessage receivedMessageEvent;
 
         //Delegate method
         public static void updateUIOnReceivedMessage(string message, EndPoint source, EndPoint local)
         {
-            if (updateUIUsingEvent != null)
+            if (receivedMessageEvent != null)
             {
-                updateUIUsingEvent(message, source, local);
+                receivedMessageEvent(message, source, local);
             }
         }
 
@@ -435,6 +431,28 @@ namespace CryptoProgram
             if (connectionEstablishedEvent != null)
             {
                 connectionEstablishedEvent(message, source, local);
+            }
+        }
+
+        //nothing yet
+        public static event SendMessage nothingEvent;
+
+        public static void connectionEstablishReceived(string message, EndPoint source, EndPoint local)
+        {
+            if (nothingEvent != null)
+            {
+                nothingEvent(message, source, local);
+            }
+        }
+
+        //Estblished connection ack event
+        public static event SendMessage connectionEstablishedACKEvent;
+
+        public static void connectionEstablishedACK(string message, EndPoint source, EndPoint local)
+        {
+            if (connectionEstablishedACKEvent != null)
+            {
+                connectionEstablishedACKEvent(message, source, local);
             }
         }
 
@@ -472,6 +490,19 @@ namespace CryptoProgram
                 invalidHeaderReceivedEvent(message, source, local);
             }
         }
+
+        /*
+        public delegate void Testing(string message);
+        public event Testing msgInEvent;
+
+        public void msgIn(string message)
+        {
+            if (msgInEvent != null)
+            {
+                msgInEvent(message);
+            }
+        }
+        */
 
             
 

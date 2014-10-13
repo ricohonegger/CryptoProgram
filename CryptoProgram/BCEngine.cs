@@ -18,7 +18,7 @@ using Org.BouncyCastle.Asn1.X509;
 using Org.BouncyCastle.X509;
 using System.Security.Cryptography;
 
-//AES functions we from here: http://elian.co.uk/post/2009/07/29/Bouncy-Castle-CSharp.aspx
+//AES functions were from here: http://elian.co.uk/post/2009/07/29/Bouncy-Castle-CSharp.aspx
 //However, site seems to be down/gone..
 
 namespace CryptoProgram
@@ -32,7 +32,7 @@ namespace CryptoProgram
          *
          * 
          * 2) The RSA encryption/decryption might need to be modified to allow for encoding
-         *    options to be specified. It is currently hardcoded to use Unicode.
+         *    options to be specified. It is currently hardcoded.
          */
         
         
@@ -93,14 +93,14 @@ namespace CryptoProgram
             }           
         }
 
-        public static Encoding _encodingS = Encoding.ASCII;//not actually used since I hardcoded base64
+        public static Encoding _encodingS = Encoding.ASCII;//not actually used since I hardcoded it
         public static Pkcs7Padding _paddingS = new Pkcs7Padding();
-
+        
         /*
          * Encrypt a string using a key which is base64 encoded.
          * Best way to get a key is to use the SHA256 hash.
          */
-        public static string AESEncryption(string plain, string key, bool fips)
+        public static string AESEncryption(string plain, string key)
         {
             BCEngine bcEngine = new BCEngine(new AesEngine(), _encodingS);
             bcEngine.SetPadding(_paddingS);
@@ -111,11 +111,17 @@ namespace CryptoProgram
          * Decrypt a string using a key which is base64 encoded.
          * Best way to get a key is to use the SHA256 hash.
          */
-        public static string AESDecryption(string cipher, string key, bool fips)
+        public static string AESDecryption(string cipher, string key)
         {
             BCEngine bcEngine = new BCEngine(new AesEngine(), _encodingS);
             bcEngine.SetPadding(_paddingS);
             return bcEngine.Decrypt(cipher, key);
+        }
+
+        public static string RSAEncryption(string plaintextAsUnicode, string key, bool isPrivateKey)
+        {
+            AsymmetricKeyParameter pub = BCEngine.convertKeyAsStringToKey(key, isPrivateKey);
+            return RSAEncryption(plaintextAsUnicode, pub);
         }
 
         /* 
@@ -124,15 +130,22 @@ namespace CryptoProgram
          */
         public static string RSAEncryption(string plaintextAsUnicode, AsymmetricKeyParameter key)
         {
-            RsaEngine engine = new RsaEngine();
+            //RsaEngine engine = new RsaEngine();
+            Pkcs1Encoding engine = new Pkcs1Encoding(new RsaEngine());
             engine.Init(true, key);
 
             //Convert .NET Unicode encoded characters to a byte array
-            Byte[] bytesToEncrypt = System.Text.UnicodeEncoding.Unicode.GetBytes(plaintextAsUnicode);
+            Byte[] bytesToEncrypt = Encoding.ASCII.GetBytes(plaintextAsUnicode); //System.Text.UnicodeEncoding.Unicode.GetBytes(plaintextAsUnicode);//// 
             byte[] encryptedText = engine.ProcessBlock(bytesToEncrypt, 0, bytesToEncrypt.Length);
-
-            //Convert to base64, since we don't want to see any nasty characters
+            
+            //Convert to base64
             return Convert.ToBase64String(encryptedText);
+        }
+
+        public static string RSADecryption(string plaintextAsUnicode, string key, bool isPrivateKey)
+        {
+            AsymmetricKeyParameter pub = BCEngine.convertKeyAsStringToKey(key, isPrivateKey);
+            return RSADecryption(plaintextAsUnicode, pub);
         }
 
         /*
@@ -141,14 +154,14 @@ namespace CryptoProgram
          */
         public static string RSADecryption(string plaintextAsBase64, AsymmetricKeyParameter key)
         {
-            RsaEngine engine = new RsaEngine();
+            //RsaEngine engine = new RsaEngine();
+            Pkcs1Encoding engine = new Pkcs1Encoding(new RsaEngine());
             engine.Init(false, key);
 
-            Byte[] bytesToEncrypt = Convert.FromBase64String(plaintextAsBase64);
+            Byte[] bytesToEncrypt = Convert.FromBase64String(plaintextAsBase64);            
             byte[] encryptedText = engine.ProcessBlock(bytesToEncrypt, 0, bytesToEncrypt.Length);
-
-            //All .NET strings are Unicode, so let's make it one again..
-            return System.Text.Encoding.Unicode.GetString(encryptedText);
+            
+            return Encoding.ASCII.GetString(encryptedText); //System.Text.Encoding.Unicode.GetString(encryptedText); //
         }
 
         /*
@@ -159,8 +172,8 @@ namespace CryptoProgram
         {
             // Convert plain text into a byte array.
             byte[] plainTextBytes = Encoding.UTF8.GetBytes(plainText);
-
-
+            //byte[] plainTextBytes = Encoding.ASCII.GetBytes(plainText);
+            
             // Because we support multiple hashing algorithms, we must define
             // hash object as a common (abstract) base class. We will specify the
             // actual hashing algorithm class later during object creation.
@@ -191,12 +204,13 @@ namespace CryptoProgram
 
                 default:
                     hash = new MD5CryptoServiceProvider();
+                    
                     break;
             }
 
             // Compute hash value of our plain text.
-            byte[] hashBytes = hash.ComputeHash(plainTextBytes);            
-
+            byte[] hashBytes = hash.ComputeHash(plainTextBytes);
+            
             // Convert result into a base64-encoded string.
             string hashValue = Convert.ToBase64String(hashBytes);
 
