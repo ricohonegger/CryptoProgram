@@ -16,16 +16,18 @@ namespace CryptoProgram
         public AsymmetricCipherKeyPair myKeys { get; set; }
         //public AsymmetricCipherKeyPair destKey { get; set; }
 
-        public SecProtocol sP { get; set; }
-        public SecProtocol sP2 { get; set; }
-
         //Contains the currently active connections (Sockets).
         public List<ActiveConnection> activeConnections { get; set; }
+        public List<String> ports { get; set; }        
+        
+        public readonly bool SELECT_PRIVATE_KEY = true;
+        public readonly bool SELECT_PUBLIC_KEY = false;
+
 
 
         public GlobalContainer()
         {
-
+            //add comment to constructor..
         }
 
     }
